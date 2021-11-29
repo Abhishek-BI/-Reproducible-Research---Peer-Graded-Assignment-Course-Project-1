@@ -1,78 +1,125 @@
-#Load the data:
-amd <- read.csv("./activity/activity.csv", stringsAsFactors = FALSE)
+---
+title: "PA1.Template"
+author: "Abhishek"
+date: "29/11/2021"
+output: html_document
+---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+# Loading activity
+##First we need to load csv file in activity variable (Reader should set working directory before starting):
+
+```{r }
+#setwd("~/activity Science/Reproductive Research/Project 1")
+
+#Load the activity:
+activity <- read.csv("./activity.csv", stringsAsFactors = FALSE)
+
+```
 #Converting the "date" variable to a Date classe and the "interval" variable to a factor:
-activity$date <- as.Date(activity$date, "%Y-%m-%d") str(activity)
+```{r}
+activity$date <- as.Date(activity$date)
 
-#Creating a data frame for each day's steps
-steps <- aggregate(steps ~ date, data = activity, sum)
 
-#Adding column names
-colnames(steps) <- c("date", "steps")
+```
 
-#Making a histogram of the total number of steps taken each day:
-hist(as.numeric(steps$steps), breaks = 20, col = "blue", xlab = "Number of Steps", main= "Histogram of the total number of steps taken each day")
+# Histogram without NA values
+##Histogram of total number of steps taken on each day is shown below:
 
-#Mean
-mean(steps$steps)
 
-#Median
-median(steps$steps)
 
-#Calculating the average
-steps_interval <- aggregate(activity$steps, by=list(interval=activity$interval), FUN=mean)
+```{r }
+sum_steps<-aggregate(activity$steps,by=list(activity$date),FUN=sum,na.rm=TRUE) 
 
-#Adding columns names
-colnames(steps_interval) <- c("interval", "average_steps")
+hist(sum_steps$x, 
+      breaks=seq(from=0, to=25000, by=2500),
+      col="yellow", 
+      xlab="Total number of steps", 
+      ylim=c(0, 20), 
+      main="Histogram of the total number of steps taken each day\n(NA removed)")
+```
 
-#ploting the average daily activity pattern
-plot(as.integer(levels(steps_interval$interval)), steps_interval$average_steps, type="l",xlab = "Interval", ylab = "Average Number of Steps", main = "Average Daily Activity Pattern", col ="blue")
+#Mean and Median of Steps
+##Mean and median number of steps taken each day
 
-#The maximum number of average steps
-max_steps <- max(steps_interval$average_steps) max_steps
+```{r}
+mean(sum_steps$x)
+median(sum_steps$x)
+```
 
-#The 5-minute interval containing the maximum number of steps
-intervale_max_steps<-steps_interval[which.max(steps_interval$average_steps),]$interval intervale_max_steps
+#Time Series Plot
+##Time series plot of the average number of steps taken
 
-#Finding the missing values
-sum(is.na(as.character(activity$steps))) sum(is.na(as.character(activity$date))) sum(is.na(as.character(activity$interval)))
-NA_index <- which(is.na(as.character(activity$steps))) complete_data <- activity
+```{r}
+avg_steps<-aggregate(activity$steps,by=list(activity$interval),FUN=mean,na.rm=TRUE)
 
-#Imputing missing values using the mean for that 5-minute interval
-complete_data[NA_index, ]$steps<-unlist(lapply(NA_index, FUN=function(NA_index){ steps_interval[activity[NA_index,]$interval==steps_interval$interval,]$average_steps }))
+colnames(avg_steps)<-c("interval","steps")
 
-#Creating a data frame with the steps taken for each day
-steps_eachday_complete <- aggregate(steps ~ date, data = complete_data, sum)
+library(ggplot2)
 
-#Adding column names
-colnames(steps_each_day_complete) <- c("date", "steps")
+ggplot(aes(x=interval,y=steps),data=avg_steps)+geom_line()
+```
+#Maximum Average 5 minute interval
+##The 5-minute interval that, on average, contains the maximum number of steps
 
-#Making the histogram
-hist(as.numeric(steps_eachday_complete$steps), breaks = 20, col = "green", xlab = "Number of Steps", main= "Histogram of the total number of steps taken each day")
+``` {r}
+avg_steps[avg_steps$steps==max(avg_steps$steps),1]
+```
+##Replace NA values with the mean of the steps
 
-#Creating a factor to store the weekdays
-complete_data$day <- as.factor(weekdays(complete_data$date))
+```{r}
+activity$steps[is.na(activity$steps)]<-mean(activity$steps,na.rm=TRUE)
+```
+##Here are some rows of new activity set
+```{r}
+head(activity)
+```
+#Histogram with Repaced NA values
+##Histogram of total number of steps taken on each day is shown below:
+```{r}
+sum_steps<-aggregate(activity$steps,by=list(activity$date),FUN=sum,na.rm=TRUE) 
 
-#Creating a logical variable "is_weekday"
-complete_data$is_weekday <- ifelse(!(complete_data$day %in% c("Saturday","Sunday")), TRUE, FALSE)
+hist(sum_steps$x, 
+      breaks=seq(from=0, to=25000, by=2500),
+      col="yellow", 
+      xlab="Total number of steps", 
+      ylim=c(0, 30), 
+      main="Total number of steps taken each day\n(NA replaced by mean)")
+```
+##Mean and median number of steps taken each day after replacing NA values with mean
+```{r}
+mean(sum_steps$x)
+median(sum_steps$x)
+```
 
-#Calculating the average steps for weekdays
-weekdays_data <- complete_data[complete_data$is_weekday,] steps_interval_weekdays <- aggregate(weekdays_data$steps, by=list(interval=weekdays_data$interval), FUN=mean)
+#Differences in activity patterns between weekdays and weekends
+##Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
 
-#Calculating the average number of steps for weekends
-weekends_data <- complete_data[!complete_data$is_weekday,] steps_interval_weekends <- aggregate(weekends_data$steps, by=list(interval=weekends_data$interval), FUN=mean)
+```{r}
+# Convert date into weekdays
 
-#Adding columns names
-colnames(steps_interval_weekdays) <- c("interval", "average_steps") colnames(steps_interval_weekends) <- c("interval", "average_steps")
+activity$days=tolower(weekdays(activity$date))
 
-#Adding a column for "day"
-steps_interval_weekdays$day <- "Weekday" steps_interval_weekends$day <- "Weekend"
+#Now categorised days into weekend and weekdays
 
-#Merging the two togather
-week_data <- rbind(steps_interval_weekends, steps_interval_weekdays)
+activity$day_type<-ifelse(activity$days=="saturday"|activity$days=="sunday","weekend","weekday")
 
-#Converting the day variabke to a factor
-week_data$day <- as.factor(week_data$day)
+#Take mean steps taken on weekend or weekday in the intervals
 
-#Making the plot
-library(lattice) xyplot(average_steps ~ interval | day, data = week_data, layout = c(1,2), type ="l", ylab="Number of Steps")
+avg_steps<-aggregate(activity$steps,by=list(activity$interval,activity$day_type),FUN=mean,na.rm=TRUE)
+
+colnames(avg_steps)<-c("interval","day_type","steps")
+
+# Create panel plot between average steps and interval seperated by day type
+
+ggplot(aes(x=interval,y=steps),data=avg_steps)+geom_line()+facet_wrap(~avg_steps$day_type)
+```
